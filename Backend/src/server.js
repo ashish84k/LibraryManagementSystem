@@ -8,11 +8,18 @@ const cors = require("cors");
 
 const app = express();
 
+// JSON parsing
+app.use(express.json());
+
+// CORS options
 const corsOptions = {
   origin: "https://library-management-system-eight-beta.vercel.app",
-  credentials: true, // cookies/session bhejne ke liye
+  credentials: true, // cookies/session ke liye
 };
-app.use(express.json());
+app.use(cors(corsOptions));
+
+// Preflight request handle karna zaruri hai
+app.options("*", cors(corsOptions));
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -49,7 +56,6 @@ const startServer = async () => {
     }
     
     if (!tableNames.includes('borrows')) {
-      // Create borrows table manually to avoid foreign key issues
       await sequelize.query(`
         CREATE TABLE IF NOT EXISTS \`borrows\` (
           \`id\` INTEGER auto_increment,
@@ -68,9 +74,11 @@ const startServer = async () => {
     }
     
     console.log('🎉 All tables ready!');
-    app.get('/' , (req , res) =>{
-      res.send("server is started...");
-    })
+
+    app.get('/', (req, res) => {
+      res.send("Server is running...");
+    });
+
     const port = process.env.PORT || 5000;
     app.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Server is running on port ${port}`);
