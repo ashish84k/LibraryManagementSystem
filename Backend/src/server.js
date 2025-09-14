@@ -8,7 +8,10 @@ const cors = require("cors");
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: "https://library-management-system-eight-beta.vercel.app",
+  credentials: true, // cookies/session bhejne ke liye
+};
 app.use(express.json());
 
 // Routes
