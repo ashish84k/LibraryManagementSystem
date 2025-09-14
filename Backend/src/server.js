@@ -12,14 +12,13 @@ const app = express();
 app.use(express.json());
 
 // CORS options
+const cors = require("cors");
 const corsOptions = {
   origin: "https://library-management-system-eight-beta.vercel.app",
-  credentials: true, // cookies/session ke liye
+  credentials: true,
 };
-app.use(cors(corsOptions));
 
-// Preflight request handle karna zaruri hai
-app.options("*", cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
