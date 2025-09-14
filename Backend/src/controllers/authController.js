@@ -43,21 +43,15 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Find user by email
     const user = await User.findOne({ where: { email } });
     console.log("hiii", user, email);
 
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Compare password directly using bcrypt
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+    // Use user.dataValues.password
+    const valid = await bcrypt.compare(password, user.dataValues.password);
+    if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
