@@ -58,7 +58,7 @@ export default function LoginPage() {
     if (validateForm()) {
       try {
         setLoading(true);
-        const { data } = await axios.post("http://localhost:5000/auth/login", {
+        const { data } = await axios.post("https://librarymanagementsystem-p7l6.onrender.com/auth/login", {
           email,
           password,
         });
