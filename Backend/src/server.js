@@ -12,21 +12,19 @@ const app = express();
 app.use(express.json());
 
 // CORS options
-const cors = require("cors");
 const corsOptions = {
   origin: "https://library-management-system-eight-beta.vercel.app",
   credentials: true,
 };
-
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); // global CORS, automatically handles preflight
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const bookRoutes = require("./routes/bookRoutes");
-const borrowBook = require("./routes/borrowRoutes");
+const borrowRoutes = require("./routes/borrowRoutes");
 app.use("/auth", authRoutes);
 app.use("/book", bookRoutes);
-app.use("/borrow", borrowBook);
+app.use("/borrow", borrowRoutes);
 
 const startServer = async () => {
   try {
@@ -71,13 +69,13 @@ const startServer = async () => {
     } else {
       console.log('✅ Borrows table already exists!');
     }
-    
-    console.log('🎉 All tables ready!');
 
+    // Simple test route
     app.get('/', (req, res) => {
       res.send("Server is running...");
     });
 
+    // Start server on Render port
     const port = process.env.PORT || 5000;
     app.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Server is running on port ${port}`);
