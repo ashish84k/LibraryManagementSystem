@@ -58,7 +58,7 @@ export default function RegisterPage() {
       try {
         setLoading(true);
         const { data } = await axios.post(
-          "http://localhost:5000/auth/register",
+          "https://librarymanagementsystem-p7l6.onrender.com/auth/register",
           formData
         );
         if (data.success) {
