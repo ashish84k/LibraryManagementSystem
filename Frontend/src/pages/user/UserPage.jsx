@@ -23,7 +23,7 @@ export default function UserPage() {
   const token = localStorage.getItem("lmsToken");
 
   const api = axios.create({
-    baseURL: "http://localhost:5000",
+    baseURL: "https://librarymanagementsystem-p7l6.onrender.com",
     headers: {
       Authorization: `Bearer ${token}`,
     },
