@@ -7,10 +7,6 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-
-// JSON parsing
-app.use(express.json());
-
 // CORS options
 const corsOptions = {
   origin: "https://library-management-system-eight-beta.vercel.app",
@@ -18,13 +14,15 @@ const corsOptions = {
 };
 app.use(cors(corsOptions)); // global CORS, automatically handles preflight
 
+app.use(express.json());
+
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const bookRoutes = require("./routes/bookRoutes");
-const borrowRoutes = require("./routes/borrowRoutes");
+const borrowBook = require("./routes/borrowRoutes");
 app.use("/auth", authRoutes);
 app.use("/book", bookRoutes);
-app.use("/borrow", borrowRoutes);
+app.use("/borrow", borrowBook);
 
 const startServer = async () => {
   try {
@@ -53,6 +51,7 @@ const startServer = async () => {
     }
     
     if (!tableNames.includes('borrows')) {
+      // Create borrows table manually to avoid foreign key issues
       await sequelize.query(`
         CREATE TABLE IF NOT EXISTS \`borrows\` (
           \`id\` INTEGER auto_increment,
@@ -69,13 +68,9 @@ const startServer = async () => {
     } else {
       console.log('✅ Borrows table already exists!');
     }
-
-    // Simple test route
-    app.get('/', (req, res) => {
-      res.send("Server is running...");
-    });
-
-    // Start server on Render port
+    
+    console.log('🎉 All tables ready!');
+    
     const port = process.env.PORT || 5000;
     app.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Server is running on port ${port}`);
