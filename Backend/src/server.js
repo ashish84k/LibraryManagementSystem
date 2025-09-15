@@ -5,6 +5,7 @@ const Book = require("./models/Book");
 const Borrow = require("./models/Borrow");
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 // CORS options
@@ -15,6 +16,7 @@ const corsOptions = {
 app.use(cors(corsOptions)); // global CORS, automatically handles preflight
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
