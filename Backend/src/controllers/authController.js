@@ -32,10 +32,10 @@ exports.register = async (req, res) => {
       role: role || "User",
     });
 
-    // JWT issue after register (optional)
+    // JWT issue after register
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "default_secret_key",
       { expiresIn: "7d" }
     );
 
@@ -80,7 +80,7 @@ exports.login = async (req, res) => {
     // Create JWT
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "default_secret_key",
       { expiresIn: "7d" }
     );
 
