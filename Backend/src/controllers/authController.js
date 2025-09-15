@@ -54,40 +54,43 @@ exports.register = async (req, res) => {
 };
 
 // ========================== LOGIN ==========================
+const cleanString = (str) => (typeof str === "string" ? str.trim() : "");
+
+const isPasswordValid = async (plain, hash) => {
+  plain = cleanString(plain);
+  return await bcrypt.compare(plain, hash);
+};
+
 exports.login = async (req, res) => {
   try {
     let { email, password } = req.body;
 
-    email = email?.trim().toLowerCase();
-    password = password?.trim();
+    email = cleanString(email).toLowerCase();
+    password = cleanString(password);
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email & password are required" });
     }
 
-    // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Sometimes user.password might be in dataValues (Sequelize)
     const storedHash = user.password || user.dataValues?.password;
     if (!storedHash) {
       return res.status(500).json({ success: false, message: "User password not found" });
     }
 
-    // Compare password
-    const isMatch = await bcrypt.compare(password, storedHash);
+    const valid = await isPasswordValid(password, storedHash);
 
-    if (!isMatch) {
+    if (!valid) {
       console.log("→ Failed login attempt for:", email);
-      console.log("→ Provided password:", password);
+      console.log("→ Provided password:", JSON.stringify(password));
       console.log("→ Stored hash:", storedHash);
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Create JWT
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET || "default_secret_key",
