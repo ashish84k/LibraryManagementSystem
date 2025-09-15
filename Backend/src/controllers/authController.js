@@ -44,12 +44,12 @@ exports.login = async (req, res) => {
 
   try {
     const user = await User.findOne({ where: { email } });
-    console.log("hiii", user,user.password ,email);
+    console.log("hiii", password,user.password ,email);
 
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
     // Use user.dataValues.password
-    const valid = await bcrypt.compare(password, user.dataValues.password);
+    const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
