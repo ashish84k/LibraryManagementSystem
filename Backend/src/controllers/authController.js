@@ -40,54 +40,39 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email = "", password = "" } = req.body; // defaults to avoid undefined
+  const { email, password } = req.body;
 
   try {
-    console.log("→ Login attempt for:", email);
-
     const user = await User.findOne({ where: { email } });
-    console.log("→ user found (raw):", !!user);
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials (no user)" });
-    }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Log stored hash and incoming password (DEBUG ONLY) — remove later!
-    const storedHash = user.password || user.dataValues?.password;
-    console.log("→ incoming password (raw):", JSON.stringify(password));
-    console.log("→ stored hash:", storedHash);
-
-    // 1) Trim incoming password (common issue)
-    const normalizedPassword = password.trim();
-    if (normalizedPassword !== password) {
-      console.log("→ note: password trimmed", { before: password.length, after: normalizedPassword.length });
-    }
-
-    // 2) Try async compare
-    const validAsync = await bcrypt.compare(normalizedPassword, storedHash);
-    console.log("→ bcrypt.compare async result:", validAsync);
-
-    // 3) Try sync compare as a fallback test
-    const validSync = bcrypt.compareSync(normalizedPassword, storedHash);
-    console.log("→ bcrypt.compareSync result:", validSync);
-
-    if (!validAsync && !validSync) {
-      // Helpful hints in response (do not leak hashes in production)
-      console.log("→ Passwords did not match. Possible causes: wrong password, whitespace, different hash algorithm.");
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Create token
+    // Token create
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || "testsecret",
+      process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    const { password: pwd, ...userData } = user.toJSON ? user.toJSON() : { ...user };
-    res.json({ success: true, message: "Logged in successfully.", token, user: userData });
+    // Cookie me set karna
+    res.cookie("token", token, {
+      httpOnly: true,   // frontend JS se access nahi kar paayega
+      secure: process.env.NODE_ENV === "production", // production me true
+      sameSite: "strict", // CSRF attack se bachata hai
+      maxAge: 60 * 60 * 1000, // 1 hour
+    });
+
+    const { password: pwd, ...userData } = user.toJSON();
+
+    res.json({
+      success: true,
+      message: "Logged in successfully.",
+      user: userData,
+    });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Error logging in", error: err.message });
+    res.status(500).json({ message: "Error logging in" });
   }
 };
