@@ -40,34 +40,54 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email = "", password = "" } = req.body; // defaults to avoid undefined
 
   try {
+    console.log("→ Login attempt for:", email);
+
     const user = await User.findOne({ where: { email } });
-    console.log("hiii", password,user.password ,email);
+    console.log("→ user found (raw):", !!user);
 
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials (no user)" });
+    }
 
-    // Use user.dataValues.password
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(400).json({ message: "Invalid credentials" });
+    // Log stored hash and incoming password (DEBUG ONLY) — remove later!
+    const storedHash = user.password || user.dataValues?.password;
+    console.log("→ incoming password (raw):", JSON.stringify(password));
+    console.log("→ stored hash:", storedHash);
 
+    // 1) Trim incoming password (common issue)
+    const normalizedPassword = password.trim();
+    if (normalizedPassword !== password) {
+      console.log("→ note: password trimmed", { before: password.length, after: normalizedPassword.length });
+    }
+
+    // 2) Try async compare
+    const validAsync = await bcrypt.compare(normalizedPassword, storedHash);
+    console.log("→ bcrypt.compare async result:", validAsync);
+
+    // 3) Try sync compare as a fallback test
+    const validSync = bcrypt.compareSync(normalizedPassword, storedHash);
+    console.log("→ bcrypt.compareSync result:", validSync);
+
+    if (!validAsync && !validSync) {
+      // Helpful hints in response (do not leak hashes in production)
+      console.log("→ Passwords did not match. Possible causes: wrong password, whitespace, different hash algorithm.");
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Create token
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "testsecret",
       { expiresIn: "1h" }
     );
 
-    const { password: pwd, ...userData } = user.toJSON();
-
-    res.json({
-      success: true,
-      message: "Logged in successfully.",
-      token,
-      user: userData,
-    });
+    const { password: pwd, ...userData } = user.toJSON ? user.toJSON() : { ...user };
+    res.json({ success: true, message: "Logged in successfully.", token, user: userData });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Error logging in" });
+    res.status(500).json({ message: "Error logging in", error: err.message });
   }
 };
