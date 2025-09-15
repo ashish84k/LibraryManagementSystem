@@ -39,6 +39,10 @@ exports.register = async (req, res) => {
   }
 };
 
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
 exports.login = async (req, res) => {
   const { email = "", password = "" } = req.body;
 
@@ -49,7 +53,7 @@ exports.login = async (req, res) => {
     console.log("→ user found (raw):", !!user);
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials (no user)" });
+      return res.status(400).json({ success: false, message: "Invalid credentials (no user)" });
     }
 
     const storedHash = user.password || user.dataValues?.password;
@@ -60,34 +64,28 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(normalizedPassword, storedHash);
 
     if (!valid) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    // JWT create
+    // ✅ JWT create
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET || "testsecret",
-      { expiresIn: "1h" }
+      { expiresIn: "7d" } // 7 days validity
     );
-
-    // 👉 Cookie me token set karo
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production" ? true : false, // local pe false rakho
-      sameSite: "none",
-      maxAge: 60 * 60 * 1000, // 1 hour
-    });
 
     const { password: pwd, ...userData } = user.toJSON ? user.toJSON() : { ...user };
 
-    // 👉 response me token wapas nahi dena (sirf cookie)
+    // ✅ Response me token + user bhejna (cookie nahi)
     res.json({
       success: true,
       message: "Logged in successfully.",
+      token,
       user: userData,
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Error logging in", error: err.message });
+    res.status(500).json({ success: false, message: "Error logging in", error: err.message });
   }
 };
+
