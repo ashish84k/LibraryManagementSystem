@@ -71,9 +71,19 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
+    // Sometimes user.password might be in dataValues (Sequelize)
+    const storedHash = user.password || user.dataValues?.password;
+    if (!storedHash) {
+      return res.status(500).json({ success: false, message: "User password not found" });
+    }
+
     // Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, storedHash);
+
     if (!isMatch) {
+      console.log("→ Failed login attempt for:", email);
+      console.log("→ Provided password:", password);
+      console.log("→ Stored hash:", storedHash);
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
@@ -97,3 +107,4 @@ exports.login = async (req, res) => {
     return res.status(500).json({ success: false, message: "Error logging in" });
   }
 };
+
