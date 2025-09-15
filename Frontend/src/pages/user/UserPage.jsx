@@ -187,7 +187,7 @@ export default function UserPage() {
                 <TableBody>
                   {myBorrows.map((book) => (
                     <TableRow key={book.id}>
-                      <TableCell>{book.title}</TableCell>
+                      <TableCell>{book?.book?.title}</TableCell>
                       <TableCell>
                         {new Date(book.borrowDate).toLocaleDateString()}
                       </TableCell>
