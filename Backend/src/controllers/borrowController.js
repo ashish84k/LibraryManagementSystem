@@ -121,6 +121,8 @@ exports.returnBook = async (req, res) => {
 exports.getUserBorrows = async (req, res) => {
   try {
     const userId = req.user.id;
+
+    // Get all active borrows
     const borrows = await Borrow.findAll({
       where: {
         userId,
@@ -128,28 +130,39 @@ exports.getUserBorrows = async (req, res) => {
       },
       order: [['borrowDate', 'DESC']]
     });
-    
-    // Get book details for each borrow
+
+    // Map borrows with book details
     const borrowsWithBooks = await Promise.all(
       borrows.map(async (borrow) => {
-        const book = await Book.findByPk(borrow.bookId);
+        let bookData = null;
+
+        try {
+          const book = await Book.findByPk(borrow.bookId);
+          if (book) {
+            bookData = {
+              id: book.id,
+              title: book.title,
+              author: book.author
+            };
+          }
+        } catch (err) {
+          console.error(`Error fetching book for borrowId ${borrow.id}:`, err.message);
+        }
+
         return {
           id: borrow.id,
           userId: borrow.userId,
           bookId: borrow.bookId,
           borrowDate: borrow.borrowDate,
           returnDate: borrow.returnDate,
-          book: book ? {
-            id: book.id,
-            title: book.title,
-            author: book.author
-          } : null
+          book: bookData
         };
       })
     );
-    
+
     res.json(borrowsWithBooks);
   } catch (err) {
+    console.error("Error fetching borrowed books:", err.message);
     res.status(500).json({ message: "Error fetching borrowed books" });
   }
 };
