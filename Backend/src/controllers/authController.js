@@ -54,51 +54,51 @@ exports.register = async (req, res) => {
 };
 
 // ========================== LOGIN ==========================
-const cleanString = (str) => (typeof str === "string" ? str.trim() : "");
-
-const isPasswordValid = async (plain, hash) => {
-  plain = cleanString(plain);
-  return await bcrypt.compare(plain, hash);
-};
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 exports.login = async (req, res) => {
   try {
-    let { email, password } = req.body;
+    const { email = "", password = "" } = req.body;
 
-    email = cleanString(email).toLowerCase();
-    password = cleanString(password);
+    // Normalize inputs
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !normalizedPassword) {
       return res.status(400).json({ success: false, message: "Email & password are required" });
     }
 
-    const user = await User.findOne({ where: { email } });
+    // Find user by email
+    const user = await User.findOne({ where: { email: normalizedEmail } });
     if (!user) {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
+    // Get stored password hash
     const storedHash = user.password || user.dataValues?.password;
     if (!storedHash) {
       return res.status(500).json({ success: false, message: "User password not found" });
     }
 
-    const valid = await isPasswordValid(password, storedHash);
-
-    if (!valid) {
-      console.log("→ Failed login attempt for:", email);
-      console.log("→ Provided password:", JSON.stringify(password));
-      console.log("→ Stored hash:", storedHash);
+    // Compare password
+    const isValid = await bcrypt.compare(normalizedPassword, storedHash);
+    if (!isValid) {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
+    // Generate JWT
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || "default_secret_key",
-      { expiresIn: "7d" }
+      process.env.JWT_SECRET, // must be set in Render / .env
+      { expiresIn: "7d" } // token valid for 7 days
     );
 
+    // Exclude password from user data
     const { password: pwd, ...userData } = user.toJSON();
 
+    // Send response
     return res.json({
       success: true,
       message: "Logged in successfully",
@@ -107,7 +107,8 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    return res.status(500).json({ success: false, message: "Error logging in" });
+    return res.status(500).json({ success: false, message: "Error logging in", error: err.message });
   }
 };
+
 
