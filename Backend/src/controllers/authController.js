@@ -5,33 +5,38 @@ const User = require("../models/User");
 // ========================== REGISTER ==========================
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    let { name, email, password, role } = req.body;
+
+    // Normalize
+    email = typeof email === "string" ? email.trim().toLowerCase() : "";
+    password = typeof password === "string" ? password.trim() : "";
 
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+      return res.status(400).json({ success: false, message: "All fields required" });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPassword = password.trim();
-
-    // Check if user exists
-    const existing = await User.findOne({ where: { email: normalizedEmail } });
+    // Check if already exists
+    const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(400).json({ success: false, message: "Email already registered" });
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Debug before create
+    console.log("→ Creating user with:", { name, email, hashedPassword, role });
 
     // Create user
     const user = await User.create({
       name: name.trim(),
-      email: normalizedEmail,
+      email,
       password: hashedPassword,
       role: role || "User"
     });
 
-    // Create JWT
+    console.log("→ User created:", user.toJSON());
+
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
@@ -46,12 +51,12 @@ exports.register = async (req, res) => {
       token,
       user: userData
     });
-
   } catch (err) {
-    console.error("Register error:", err);
-    return res.status(500).json({ success: false, message: "Error registering user" });
+    console.error("Register error full:", err);
+    return res.status(500).json({ success: false, message: "Error registering user", error: err.message });
   }
 };
+
 
 // ========================== LOGIN ==========================
 exports.login = async (req, res) => {
