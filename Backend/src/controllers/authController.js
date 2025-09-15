@@ -40,32 +40,47 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email = "", password = "" } = req.body;
 
   try {
+    console.log("→ Login attempt for:", email);
+
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    console.log("→ user found (raw):", !!user);
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials (no user)" });
+    }
 
-    // Token create
+    const storedHash = user.password || user.dataValues?.password;
+    console.log("→ incoming password:", password);
+    console.log("→ stored hash:", storedHash);
+
+    const normalizedPassword = password.trim();
+    const valid = await bcrypt.compare(normalizedPassword, storedHash);
+
+    if (!valid) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // JWT create
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "testsecret",
       { expiresIn: "1h" }
     );
 
-    // Cookie me set karna
+    // 👉 Cookie me token set karo
     res.cookie("token", token, {
-      httpOnly: true,   // frontend JS se access nahi kar paayega
-      secure: process.env.NODE_ENV === "production", // production me true
-      sameSite: "strict", // CSRF attack se bachata hai
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production" ? true : false, // local pe false rakho
+      sameSite: "none",
       maxAge: 60 * 60 * 1000, // 1 hour
     });
 
-    const { password: pwd, ...userData } = user.toJSON();
+    const { password: pwd, ...userData } = user.toJSON ? user.toJSON() : { ...user };
 
+    // 👉 response me token wapas nahi dena (sirf cookie)
     res.json({
       success: true,
       message: "Logged in successfully.",
@@ -73,6 +88,6 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Error logging in" });
+    res.status(500).json({ message: "Error logging in", error: err.message });
   }
 };
